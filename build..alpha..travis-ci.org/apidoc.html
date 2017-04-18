@@ -1,0 +1,274 @@
+<div class="apidocDiv">
+<style>
+/*csslint
+*/
+.apidocDiv {
+    background: #fff;
+    font-family: Arial, Helvetica, sans-serif;
+}
+.apidocDiv a[href] {
+    color: #33f;
+    font-weight: bold;
+    text-decoration: none;
+}
+.apidocDiv a[href]:hover {
+    text-decoration: underline;
+}
+.apidocCodeCommentSpan {
+    background: #bbf;
+    color: #000;
+    display: block;
+}
+.apidocCodeKeywordSpan {
+    color: #d00;
+    font-weight: bold;
+}
+.apidocCodePre {
+    background: #eef;
+    border: 1px solid;
+    color: #777;
+    padding: 5px;
+    white-space: pre-wrap;
+}
+.apidocFooterDiv {
+    margin-top: 20px;
+    text-align: center;
+}
+.apidocModuleLi {
+    margin-top: 10px;
+}
+.apidocSectionDiv {
+    border-top: 1px solid;
+    margin-top: 20px;
+}
+.apidocSignatureSpan {
+    color: #777;
+    font-weight: bold;
+}
+</style>
+<h1>api documentation for
+    <a
+
+        href="https://github.com/sass/node-sass-middleware"
+
+    >node-sass-middleware (v0.11.0)</a>
+</h1>
+<h4>Connect middleware for node-sass</h4>
+<div class="apidocSectionDiv"><a
+    href="#apidoc.tableOfContents"
+    id="apidoc.tableOfContents"
+><h1>table of contents</h1></a><ol>
+
+    <li class="apidocModuleLi"><a href="#apidoc.module.node-sass-middleware">module node-sass-middleware</a><ol>
+
+        <li>
+
+            <a class="apidocElementLiA" href="#apidoc.element.node-sass-middleware.node-sass-middleware">
+            function <span class="apidocSignatureSpan"></span>node-sass-middleware
+            <span class="apidocSignatureSpan">(options)</span>
+            </a>
+
+        </li>
+
+        <li>
+
+            <a class="apidocElementLiA" href="#apidoc.element.node-sass-middleware.toString">
+            function <span class="apidocSignatureSpan">node-sass-middleware.</span>toString
+            <span class="apidocSignatureSpan">()</span>
+            </a>
+
+        </li>
+
+    </ol></li>
+
+</ol></div>
+
+<div class="apidocSectionDiv">
+<h1><a href="#apidoc.module.node-sass-middleware" id="apidoc.module.node-sass-middleware">module node-sass-middleware</a></h1>
+
+
+    <h2>
+        <a href="#apidoc.element.node-sass-middleware.node-sass-middleware" id="apidoc.element.node-sass-middleware.node-sass-middleware">
+        function <span class="apidocSignatureSpan"></span>node-sass-middleware
+        <span class="apidocSignatureSpan">(options)</span>
+        </a>
+    </h2>
+    <ul>
+    <li>description and source-code<pre class="apidocCodePre">node-sass-middleware = function (options) {
+  options = options || {};
+
+  // Accept single src/dest dir
+  if (typeof options == &#x27;string&#x27;) {
+    options = { src: options };
+  }
+
+  // Source directory (required)
+  var src = options.src || function() {
+    throw new Error(&#x27;sass.middleware() requires &#x22;src&#x22; directory.&#x27;);
+  }();
+  // Destination directory (source by default)
+  var dest = options.dest || src;
+  // Optional base path for src and dest
+  var root = options.root || null;
+
+  // Force compilation everytime
+  var force = options.force || options.response;
+  // Enable debug output
+  var debug = options.debug;
+
+  var sassExtension = (options.indentedSyntax === true) ? &#x27;.sass&#x27; : &#x27;.scss&#x27;;
+
+  var sourceMap = options.sourceMap || null;
+
+  var maxAge = options.maxAge || 0;
+
+  //Allow custom log function or default one
+  var log = options.log || function(severity, key, val, text) {
+    if (!debug &#x26;&#x26; severity === &#x27;debug&#x27;) { // skip debug when debug is off
+      return;
+    }
+
+    text = text || &#x27;&#x27;;
+
+    if (typeof (console[severity]) === &#x27;function&#x27;) {
+      console[severity](&#x27;[sass]  \x1B[90m%s:\x1B[0m \x1B[36m%s %s\x1B[0m&#x27;, key, val, text);
+    } else {
+      console.error(&#x27;[sass]  \x1B[90m%s:\x1B[0m \x1B[36m%s %s\x1B[0m&#x27;, key, val, text);
+    }
+  };
+
+  // Default compile callback
+  options.compile = options.compile || function() {
+    return sass;
+  };
+
+  // Middleware
+  return function sass(req, res, next) {
+    var sassMiddlewareError = null;
+
+    // This function will be called if something goes wrong
+    var error = function(err, errorMessage) {
+      log(&#x27;error&#x27;, &#x27;error&#x27;, errorMessage || err);
+
+      if (options.error) {
+        options.error(err);
+      }
+
+      sassMiddlewareError = err;
+    };
+
+    if (req.method != &#x27;GET&#x27; &#x26;&#x26; req.method != &#x27;HEAD&#x27;) {
+      return next();
+    }
+
+    var path = url.parse(req.url).pathname;
+
+    if (!/\.css$/.test(path)) {
+      log(&#x27;debug&#x27;, &#x27;skip&#x27;, path, &#x27;nothing to do&#x27;);
+      return next();
+    }
+
+    if (options.prefix) {
+      if (0 === path.indexOf(options.prefix)) {
+        path = path.substring(options.prefix.length);
+      } else {
+        log(&#x27;debug&#x27;, &#x27;skip&#x27;, path, &#x27;prefix mismatch&#x27;);
+        return next();
+      }
+    }
+
+    var cssPath = join(dest, path),
+        sassPath = join(src, path.replace(/\.css$/, sassExtension)),
+        sassDir = dirname(sassPath);
+
+    if (root) {
+      cssPath = join(root, dest, path.replace(new RegExp(&#x27;^&#x27; + dest), &#x27;&#x27;));
+      sassPath = join(root, src, path
+          .replace(new RegExp(&#x27;^&#x27; + dest), &#x27;&#x27;)
+          .replace(/\.css$/, sassExtension));
+      sassDir = dirname(sassPath);
+    }
+
+    log(&#x27;debug&#x27;, &#x27;source&#x27;, sassPath);
+    log(&#x27;debug&#x27;, &#x27;dest&#x27;, options.response ? &#x27;&#x3c;response&#x3e;&#x27; : cssPath);
+
+    // When render is done, respond to the request accordingly
+    var done = function(err, result) {
+      if (err) {
+        var file = sassPath;
+        if (err.file &#x26;&#x26; err.file != &#x27;stdin&#x27;) {
+          file = err.file;
+        }
+
+        var fileLineColumn = file + &#x27;:&#x27; + err.line + &#x27;:&#x27; + err.column;
+        var errorMessage = &#x27;\x07\x1B[31m&#x27; + err.message.replace(/^ +/, &#x27;&#x27;) + &#x27;\n\nin &#x27; + fileLineColumn + &#x27;\x1B[91m&#x27;;
+
+        error(err, errorMessage);
+        return next(err);
+      }
+
+      var data = result.css;
+
+      log(&#x27;debug&#x27;, &#x27;render&#x27;, options.response ? &#x27;&#x3c;response&#x3e;&#x27; : sassPath);
+
+      if (sourceMap) {
+        log(&#x27;debug&#x27;, &#x27;render&#x27;, this.options.sourceMap);
+      }
+      imports[sassPath] = result.stats.includedFiles;
+
+      var cssDone = true;
+      var sourceMapDone = true;
+
+      function doneWriting() {
+        if (!cssDone || !sourceMapDone) {
+          return;
+        }
+
+        if (options.response === false) {
+          return next(sassMiddlewareError);
+        }
+
+        res.writeHead(200, {
+          &#x27;Content-Type&#x27;: &#x27;text/css&#x27;,
+          &#x27;Cache-Control&#x27;: &#x27;max-age=&#x27; + maxAge
+        });
+        res.end(data);
+      }
+
+      // If response is true, do not write to file
+      if (options.response) {
+        return doneWriting();
+      }
+
+      cssDone = false;
+      sourceMapDone = !sourceMap;
+
+      mkdirp(dirname(cssPath), &#x27;0700&#x27;, function(err) {
+        if ( ...</pre></li>
+    <li>example usage<pre class="apidocCodePre">n/a</pre></li>
+    </ul>
+
+
+
+    <h2>
+        <a href="#apidoc.element.node-sass-middleware.toString" id="apidoc.element.node-sass-middleware.toString">
+        function <span class="apidocSignatureSpan">node-sass-middleware.</span>toString
+        <span class="apidocSignatureSpan">()</span>
+        </a>
+    </h2>
+    <ul>
+    <li>description and source-code<pre class="apidocCodePre">toString = function () {
+    return text;
+}</pre></li>
+    <li>example usage<pre class="apidocCodePre">n/a</pre></li>
+    </ul>
+
+
+</div>
+
+<div class="apidocFooterDiv">
+    [ this document was created with
+    <a href="https://github.com/kaizhu256/node-utility2" target="_blank">utility2</a>
+    ]
+</div>
+</div>
